@@ -23,7 +23,7 @@ func NewSessionHandler(svc *service.SessionService) *SessionHandler {
 // CreateSession godoc
 //
 //	@Summary		Create session
-//	@Description	Generates a random token and stores it in gm_session.session.
+//	@Description	Generates a random token and stores it in tr_session.session.
 //	@Tags			session
 //	@Produce		json
 //	@Success		201	{object}	model.Session
@@ -45,6 +45,37 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, sess)
+}
+
+// CheckSession godoc
+//
+//	@Summary		Check session exists
+//	@Description	Returns whether the session exists and the tr_session.games integer array (empty when missing).
+//	@Tags			session
+//	@Produce		json
+//	@Param			session	path	string	true	"Session token (hex)"
+//	@Success		200	{object}	model.SessionExistsResponse
+//	@Failure		400	{object}	model.ErrorResponse
+//	@Failure		500	{object}	model.ErrorResponse
+//	@Router			/session/{session} [get]
+func (h *SessionHandler) CheckSession(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("session")
+	if token == "" {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "session is required"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	out, err := h.svc.LookupSession(ctx, token)
+	if err != nil {
+		log.Printf("check session: %v", err)
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: "failed to check session"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, out)
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

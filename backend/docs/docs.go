@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/session": {
             "post": {
-                "description": "Generates a random token and stores it in gm_session.session.",
+                "description": "Generates a random token and stores it in tr_session.session.",
                 "produces": [
                     "application/json"
                 ],
@@ -30,6 +30,47 @@ const docTemplate = `{
                         "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/model.Session"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/session/{session}": {
+            "get": {
+                "description": "Returns whether the session exists and the tr_session.games integer array (empty when missing).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "session"
+                ],
+                "summary": "Check session exists",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token (hex)",
+                        "name": "session",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.SessionExistsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
                         }
                     },
                     "500": {
@@ -57,6 +98,21 @@ const docTemplate = `{
             "properties": {
                 "session": {
                     "type": "string"
+                }
+            }
+        },
+        "model.SessionExistsResponse": {
+            "type": "object",
+            "properties": {
+                "exists": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "games": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         }

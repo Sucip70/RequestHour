@@ -14,6 +14,7 @@ import (
 var (
 	ErrGenerateToken = errors.New("generate session token")
 	ErrSaveSession   = errors.New("save session")
+	ErrCheckSession  = errors.New("check session")
 )
 
 type SessionService struct {
@@ -34,6 +35,21 @@ func (s *SessionService) CreateSession(ctx context.Context) (*model.Session, err
 		return nil, fmt.Errorf("%w: %w", ErrSaveSession, err)
 	}
 	return &model.Session{Session: token}, nil
+}
+
+// LookupSession returns whether the token exists and its games array from tr_session.
+func (s *SessionService) LookupSession(ctx context.Context, session string) (model.SessionExistsResponse, error) {
+	if session == "" {
+		return model.SessionExistsResponse{Exists: false, Games: []int{}}, nil
+	}
+	found, games, err := s.repo.GetSessionGames(ctx, session)
+	if err != nil {
+		return model.SessionExistsResponse{}, fmt.Errorf("%w: %w", ErrCheckSession, err)
+	}
+	if games == nil {
+		games = []int{}
+	}
+	return model.SessionExistsResponse{Exists: found, Games: games}, nil
 }
 
 func randomHex(byteLen int) (string, error) {

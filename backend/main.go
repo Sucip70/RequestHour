@@ -53,6 +53,7 @@ func main() {
 	addr := ":" + getenv("PORT", "8080")
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /session", sessionHandler.CreateSession)
+	mux.HandleFunc("GET /session/{session}", sessionHandler.CheckSession)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
 	log.Printf("listening on %s (swagger UI: http://localhost%s/swagger/index.html)", addr, addr)
