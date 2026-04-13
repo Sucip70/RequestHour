@@ -1,0 +1,40 @@
+basePath: /
+definitions:
+  model.ErrorResponse:
+    properties:
+      error:
+        example: failed to save session
+        type: string
+    type: object
+  model.Session:
+    properties:
+      session:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API backed by Supabase (PostgreSQL).
+  title: Request Hour API
+  version: "1.0"
+paths:
+  /session:
+    post:
+      description: Generates a random token and stores it in gm_session.session.
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Session'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Create session
+      tags:
+      - session
+schemes:
+- http
+swagger: "2.0"

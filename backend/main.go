@@ -1,4 +1,14 @@
+// Package main runs the HTTP API and serves OpenAPI docs at /swagger/index.html.
+//
+//	@title			Request Hour API
+//	@version		1.0
+//	@description	REST API backed by Supabase (PostgreSQL).
+//	@host			localhost:8080
+//	@BasePath		/
+//	@schemes		http
 package main
+
+//go:generate go run github.com/swaggo/swag/cmd/swag@v1.16.4 init -g main.go -d ./ --parseInternal
 
 import (
 	"context"
@@ -8,6 +18,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "requesthour/backend/docs" // generated Swagger docs
 
 	"requesthour/backend/internal/handler"
 	"requesthour/backend/internal/repository"
@@ -40,8 +53,9 @@ func main() {
 	addr := ":" + getenv("PORT", "8080")
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /session", sessionHandler.CreateSession)
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
-	log.Printf("listening on %s", addr)
+	log.Printf("listening on %s (swagger UI: http://localhost%s/swagger/index.html)", addr, addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
 }
 
