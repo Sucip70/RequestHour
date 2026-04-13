@@ -12,6 +12,165 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/game/answer": {
+            "post": {
+                "description": "Compares title to gm_songs for tr_session.current. Correct: append id to games. Wrong: reset games to empty.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "game"
+                ],
+                "summary": "Submit answer",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token",
+                        "name": "X-Session",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Chosen title",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.GameAnswerRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.GameAnswerResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/game/audio": {
+            "post": {
+                "description": "Returns the song link if the token matches this session and tr_session.current.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "game"
+                ],
+                "summary": "Decrypt audio token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token",
+                        "name": "X-Session",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "audioToken from POST /game/question",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.GameAudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.GameAudioResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/game/question": {
+            "post": {
+                "description": "Four random titles from gm_songs not yet in games; sets tr_session.current; returns shuffled titles and audioToken (AES-GCM: link+session+songId).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "game"
+                ],
+                "summary": "Start song quiz round",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token",
+                        "name": "X-Session",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.GameQuestionResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/session": {
             "post": {
                 "description": "Generates a random token and stores it in tr_session.session.",
@@ -90,6 +249,60 @@
                 }
             }
         },
+        "model.GameAnswerRequest": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "example": "Song Title"
+                }
+            }
+        },
+        "model.GameAnswerResponse": {
+            "type": "object",
+            "properties": {
+                "correct": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "games": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "model.GameAudioRequest": {
+            "type": "object",
+            "properties": {
+                "audioToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.GameAudioResponse": {
+            "type": "object",
+            "properties": {
+                "link": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.GameQuestionResponse": {
+            "type": "object",
+            "properties": {
+                "audioToken": {
+                    "type": "string"
+                },
+                "titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "model.Session": {
             "type": "object",
             "properties": {
@@ -101,6 +314,9 @@
         "model.SessionExistsResponse": {
             "type": "object",
             "properties": {
+                "current": {
+                    "type": "integer"
+                },
                 "exists": {
                     "type": "boolean",
                     "example": true

@@ -37,19 +37,19 @@ func (s *SessionService) CreateSession(ctx context.Context) (*model.Session, err
 	return &model.Session{Session: token}, nil
 }
 
-// LookupSession returns whether the token exists and its games array from tr_session.
+// LookupSession returns whether the token exists, games, and current question id.
 func (s *SessionService) LookupSession(ctx context.Context, session string) (model.SessionExistsResponse, error) {
 	if session == "" {
 		return model.SessionExistsResponse{Exists: false, Games: []int{}}, nil
 	}
-	found, games, err := s.repo.GetSessionGames(ctx, session)
+	found, games, current, err := s.repo.GetSessionState(ctx, session)
 	if err != nil {
 		return model.SessionExistsResponse{}, fmt.Errorf("%w: %w", ErrCheckSession, err)
 	}
 	if games == nil {
 		games = []int{}
 	}
-	return model.SessionExistsResponse{Exists: found, Games: games}, nil
+	return model.SessionExistsResponse{Exists: found, Games: games, Current: current}, nil
 }
 
 func randomHex(byteLen int) (string, error) {

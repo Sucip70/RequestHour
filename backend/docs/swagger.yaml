@@ -6,6 +6,41 @@ definitions:
         example: failed to save session
         type: string
     type: object
+  model.GameAnswerRequest:
+    properties:
+      title:
+        example: Song Title
+        type: string
+    type: object
+  model.GameAnswerResponse:
+    properties:
+      correct:
+        example: true
+        type: boolean
+      games:
+        items:
+          type: integer
+        type: array
+    type: object
+  model.GameAudioRequest:
+    properties:
+      audioToken:
+        type: string
+    type: object
+  model.GameAudioResponse:
+    properties:
+      link:
+        type: string
+    type: object
+  model.GameQuestionResponse:
+    properties:
+      audioToken:
+        type: string
+      titles:
+        items:
+          type: string
+        type: array
+    type: object
   model.Session:
     properties:
       session:
@@ -13,6 +48,8 @@ definitions:
     type: object
   model.SessionExistsResponse:
     properties:
+      current:
+        type: integer
       exists:
         example: true
         type: boolean
@@ -28,6 +65,113 @@ info:
   title: Request Hour API
   version: "1.0"
 paths:
+  /game/answer:
+    post:
+      consumes:
+      - application/json
+      description: 'Compares title to gm_songs for tr_session.current. Correct: append
+        id to games. Wrong: reset games to empty.'
+      parameters:
+      - description: Session token
+        in: header
+        name: X-Session
+        required: true
+        type: string
+      - description: Chosen title
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.GameAnswerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.GameAnswerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Submit answer
+      tags:
+      - game
+  /game/audio:
+    post:
+      consumes:
+      - application/json
+      description: Returns the song link if the token matches this session and tr_session.current.
+      parameters:
+      - description: Session token
+        in: header
+        name: X-Session
+        required: true
+        type: string
+      - description: audioToken from POST /game/question
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.GameAudioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.GameAudioResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Decrypt audio token
+      tags:
+      - game
+  /game/question:
+    post:
+      description: 'Four random titles from gm_songs not yet in games; sets tr_session.current;
+        returns shuffled titles and audioToken (AES-GCM: link+session+songId).'
+      parameters:
+      - description: Session token
+        in: header
+        name: X-Session
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.GameQuestionResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: Start song quiz round
+      tags:
+      - game
   /session:
     post:
       description: Generates a random token and stores it in tr_session.session.

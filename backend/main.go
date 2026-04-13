@@ -46,14 +46,25 @@ func main() {
 		log.Fatalf("connected but ping failed: %v", err)
 	}
 
+	gameSecret := os.Getenv("GAME_SECRET")
+	if gameSecret == "" {
+		log.Fatal("GAME_SECRET is not set (use a long random string; used to encrypt quiz audio tokens)")
+	}
+
 	sessionRepo := repository.NewSessionRepository(pool)
+	songRepo := repository.NewSongRepository(pool)
 	sessionSvc := service.NewSessionService(sessionRepo)
+	gameSvc := service.NewGameService(sessionRepo, songRepo, gameSecret)
 	sessionHandler := handler.NewSessionHandler(sessionSvc)
+	gameHandler := handler.NewGameHandler(gameSvc)
 
 	addr := ":" + getenv("PORT", "8080")
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /session", sessionHandler.CreateSession)
 	mux.HandleFunc("GET /session/{session}", sessionHandler.CheckSession)
+	mux.HandleFunc("POST /game/question", gameHandler.Question)
+	mux.HandleFunc("POST /game/audio", gameHandler.Audio)
+	mux.HandleFunc("POST /game/answer", gameHandler.Answer)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
 	log.Printf("listening on %s (swagger UI: http://localhost%s/swagger/index.html)", addr, addr)
