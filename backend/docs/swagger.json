@@ -124,6 +124,65 @@
                 }
             }
         },
+        "/game/audio-clip": {
+            "post": {
+                "description": "Same verification as POST /game/audio; runs yt-dlp + ffmpeg server-side and returns raw MP3 (first 10 seconds). Requires yt-dlp and ffmpeg on PATH.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "game"
+                ],
+                "summary": "10s YouTube preview as MP3",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session token",
+                        "name": "X-Session",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "audioToken from POST /game/question",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.GameAudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/model.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/game/question": {
             "post": {
                 "description": "Four random titles from gm_songs not yet in games; sets tr_session.current; returns shuffled titles and audioToken (AES-GCM: link+session+songId).",

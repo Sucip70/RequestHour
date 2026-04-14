@@ -140,6 +140,46 @@ paths:
       summary: Decrypt audio token
       tags:
       - game
+  /game/audio-clip:
+    post:
+      consumes:
+      - application/json
+      description: Same verification as POST /game/audio; runs yt-dlp + ffmpeg server-side
+        and returns raw MP3 (first 10 seconds). Requires yt-dlp and ffmpeg on PATH.
+      parameters:
+      - description: Session token
+        in: header
+        name: X-Session
+        required: true
+        type: string
+      - description: audioToken from POST /game/question
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/model.GameAudioRequest'
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/model.ErrorResponse'
+      summary: 10s YouTube preview as MP3
+      tags:
+      - game
   /game/question:
     post:
       description: 'Four random titles from gm_songs not yet in games; sets tr_session.current;

@@ -11,6 +11,7 @@ import (
 
 	"requesthour/backend/internal/model"
 	"requesthour/backend/internal/service"
+	"requesthour/backend/internal/youtubeclip"
 )
 
 type GameHandler struct {
@@ -96,6 +97,45 @@ func (h *GameHandler) Audio(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, model.GameAudioResponse{Link: link})
 }
 
+// AudioClip godoc
+//
+//	@Summary		10s YouTube preview as MP3
+//	@Description	Same verification as POST /game/audio; runs yt-dlp + ffmpeg server-side and returns raw MP3 (first 10 seconds). Requires yt-dlp and ffmpeg on PATH.
+//	@Tags			game
+//	@Accept			json
+//	@Produce		octet-stream
+//	@Param			X-Session	header	string					true	"Session token"
+//	@Param			body		body	model.GameAudioRequest	true	"audioToken from POST /game/question"
+//	@Success		200	{file}	binary
+//	@Failure		400	{object}	model.ErrorResponse
+//	@Failure		404	{object}	model.ErrorResponse
+//	@Failure		503	{object}	model.ErrorResponse
+//	@Router			/game/audio-clip [post]
+func (h *GameHandler) AudioClip(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFromRequest(r)
+	if sess == "" {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "X-Session or Authorization Bearer header is required"})
+		return
+	}
+	var req model.GameAudioRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "invalid JSON body"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	defer cancel()
+
+	data, err := h.svc.AudioClipMP3(ctx, sess, req.AudioToken)
+	if err != nil {
+		writeGameErr(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "audio/mpeg")
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
 // Answer godoc
 //
 //	@Summary		Submit answer
@@ -143,6 +183,10 @@ func writeGameErr(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "no active question; start a round with POST /game/question"})
 	case errors.Is(err, service.ErrInvalidAudioToken):
 		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "invalid or expired audio token"})
+	case errors.Is(err, youtubeclip.ErrNotYouTube):
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Error: "song link is not a supported YouTube URL"})
+	case errors.Is(err, service.ErrAudioClipFailed):
+		writeJSON(w, http.StatusServiceUnavailable, model.ErrorResponse{Error: "could not build audio clip; install yt-dlp and ffmpeg or check server logs"})
 	default:
 		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Error: "game operation failed"})
 	}

@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -25,6 +26,7 @@ import (
 	"requesthour/backend/internal/handler"
 	"requesthour/backend/internal/repository"
 	"requesthour/backend/internal/service"
+	"requesthour/backend/internal/youtubeclip"
 )
 
 func main() {
@@ -36,7 +38,16 @@ func main() {
 	}
 
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		log.Fatalf("failed to parse DATABASE_URL: %v", err)
+	}
+	// Supabase pooler (PgBouncer transaction mode) does not support prepared statements per connection.
+	// Without this, you may see: prepared statement "stmtcache_..." already exists (SQLSTATE 42P05).
+	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	cfg.ConnConfig.StatementCacheCapacity = 0
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		log.Fatalf("failed to create pool: %v", err)
 	}
@@ -54,7 +65,7 @@ func main() {
 	sessionRepo := repository.NewSessionRepository(pool)
 	songRepo := repository.NewSongRepository(pool)
 	sessionSvc := service.NewSessionService(sessionRepo)
-	gameSvc := service.NewGameService(sessionRepo, songRepo, gameSecret)
+	gameSvc := service.NewGameService(sessionRepo, songRepo, gameSecret, youtubeclip.NewFromEnv())
 	sessionHandler := handler.NewSessionHandler(sessionSvc)
 	gameHandler := handler.NewGameHandler(gameSvc)
 
@@ -64,6 +75,7 @@ func main() {
 	mux.HandleFunc("GET /session/{session}", sessionHandler.CheckSession)
 	mux.HandleFunc("POST /game/question", gameHandler.Question)
 	mux.HandleFunc("POST /game/audio", gameHandler.Audio)
+	mux.HandleFunc("POST /game/audio-clip", gameHandler.AudioClip)
 	mux.HandleFunc("POST /game/answer", gameHandler.Answer)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 

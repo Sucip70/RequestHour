@@ -12,6 +12,7 @@ import (
 	"requesthour/backend/internal/gamecrypto"
 	"requesthour/backend/internal/model"
 	"requesthour/backend/internal/repository"
+	"requesthour/backend/internal/youtubeclip"
 )
 
 var (
@@ -19,19 +20,22 @@ var (
 	ErrNotEnoughSongs    = errors.New("not enough songs remaining")
 	ErrNoActiveQuestion  = errors.New("no active question")
 	ErrInvalidAudioToken = errors.New("invalid audio token")
+	ErrAudioClipFailed   = errors.New("audio clip extraction failed")
 )
 
 type GameService struct {
 	sessions *repository.SessionRepository
 	songs    *repository.SongRepository
 	key      []byte
+	clip     *youtubeclip.Extractor
 }
 
-func NewGameService(sessions *repository.SessionRepository, songs *repository.SongRepository, gameSecret string) *GameService {
+func NewGameService(sessions *repository.SessionRepository, songs *repository.SongRepository, gameSecret string, clip *youtubeclip.Extractor) *GameService {
 	return &GameService{
 		sessions: sessions,
 		songs:    songs,
 		key:      gamecrypto.Key(gameSecret),
+		clip:     clip,
 	}
 }
 
@@ -123,6 +127,22 @@ func (g *GameService) RevealAudio(ctx context.Context, session, audioToken strin
 		return "", ErrInvalidAudioToken
 	}
 	return payload.Link, nil
+}
+
+// AudioClipMP3 verifies the token like RevealAudio, then returns the first 10 seconds of the YouTube track as MP3 bytes (requires yt-dlp + ffmpeg).
+func (g *GameService) AudioClipMP3(ctx context.Context, session, audioToken string) ([]byte, error) {
+	link, err := g.RevealAudio(ctx, session, audioToken)
+	if err != nil {
+		return nil, err
+	}
+	data, err := g.clip.FirstSecondsMP3(ctx, link, 10)
+	if err != nil {
+		if errors.Is(err, youtubeclip.ErrNotYouTube) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("%w: %w", ErrAudioClipFailed, err)
+	}
+	return data, nil
 }
 
 // Answer compares the submitted title to the song in current; updates games or resets on wrong answer.
